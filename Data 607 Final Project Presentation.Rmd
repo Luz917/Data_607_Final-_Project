@@ -1,0 +1,278 @@
+---
+title: "Data 607 Final Project Presentation"
+author: "Maryluz Cruz"
+date: "12/12/2019"
+output:
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Social Media and Adolescents and affects of Mental Health Sentiment Analysis Presentation
+
+### Motivation
+
+- The motivation behind this assignment is that I have a niece that is in her pre-teens sometimes I wonder if she got into Social Media too early. 
+
+- Based on these articles it seems like Social Media is not exactly a good thing for someone that is an Adolescents and Children.  
+
+## The Three Articles 
+-  First article - Social Media and Adolescents’ and Young Adults’ Mental Health by Elina Mir and Caroline Novas, National Center for Health Research
+- Second Article- The Negative Effects of Social Media for Teens by Josh Ochs
+- Third Article - Social Media and Kids: Some Benefits, Some Worries by The American Academy of Pediatrics
+
+## Preparation for the project
+
+- Data was scraped and collected with rvest, and using the Selectorgadget tool.
+
+- Data was merged together(since one article had to be scraped seperately) and made into a dataframe, converted into a csv and uploaded into GITHUB and read in as a csv. 
+
+- Then the data was cleaned and ready for text analysis.
+
+
+
+
+```{r warning=FALSE, message= FALSE, include=FALSE}
+require(rvest)
+require(purrr)
+require(xml2)  
+require(rJava)
+require(kableExtra)
+require(dplyr)
+require(tidytext)
+require(tidyverse)
+require(tm)
+require(SnowballC)
+require(ggplot2)
+require(igraph)
+require(ggraph)
+require(widyr)
+require(wordcloud)
+require(tidyr)
+require(reshape2)
+```
+
+## List of the most used words
+
+```{r warning=FALSE, message= FALSE, includeFALSE}
+social_media_adolescents<-read.csv("https://raw.githubusercontent.com/Luz917/Data_607_Final-_Project/master/social_media_and_adolescents.csv", stringsAsFactors = FALSE) 
+
+```
+
+```{r warning=FALSE, message= FALSE, include=FALSE}
+## This method was found in datacamp with their example of sentiment analysis
+
+undesirable_words <- c("thousand", "the", "hundred","three","thousand","percent","four", "null")
+
+
+social_media_tidy <- social_media_adolescents %>%
+  unnest_tokens(word, Text) %>%
+  filter(!word %in% undesirable_words) %>% #Remove undesirables
+  filter(!nchar(word) < 3) %>% #Words that are less than three letters 
+  anti_join(stop_words) #Data provided by the tidytext package
+glimpse(social_media_tidy)
+```
+
+```{r warning=FALSE, message= FALSE}
+totalwords1<-social_media_tidy%>%
+  count(word, sort= TRUE)
+
+kable(totalwords1 [1:10, 1:2] ) %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T, border_right = F) %>%
+  column_spec(1, width = "15em", background = "lightblue")
+```
+
+
+## Visualisation of the most used words
+
+```{r warning=FALSE, message= FALSE}
+library(ggplot2)
+
+social_media_tidy %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 10) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+```
+
+
+## An observation of the three most used sentiments
+
+### NRC
+
+- NRC is a list of Enlish words which associates with eight basic words: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust. Along with two sentiments: positive and negative. 
+
+### BING 
+
+- Evaluates the words as either positive or negative
+
+### AFINN
+
+- Words in Afinn are given numerical values that are either positive or negative. 
+
+## Positive NRC
+- Now we begin the analysis, first I am going to use the NRC emotion "trust" which is considered positive and see what words relate to that to "trust". 
+
+```{r warning=FALSE, message= FALSE}
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+
+social_media_nrc<-social_media_tidy  %>%
+ 
+  inner_join(nrc_trust) %>%
+  count(word, sort = TRUE)
+
+kable(social_media_nrc [1:10, 1:2]  ) %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T, border_right = F) %>%
+  column_spec(1, width = "15em", background = "lightblue")
+```
+
+## Negative NRC
+
+- Here I decided to use the NRC emotion word "sadness" to see what words that are considered negative.  
+
+```{r warning=FALSE, message= FALSE}
+nrc_sadness <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+
+social_media_nrcneg<-social_media_tidy%>%
+  inner_join(nrc_sadness) %>%
+  count(word, sort = TRUE)
+
+
+kable(social_media_nrcneg [1:10, 1:2]) %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T, border_right = F) %>%
+  column_spec(1, width = "15em", background = "lightblue")
+```
+
+## BING 
+
+
+```{r warning=FALSE, message= FALSE, include= FALSE}
+bing_word_counts <- social_media_tidy %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+kable(bing_word_counts) %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T, border_right = F) %>%
+  column_spec(1, width = "15em", background = "lightblue")
+
+```
+
+
+
+
+### Visualization of BING
+
+```{r warning=FALSE, message= FALSE}
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+
+## Afinn 
+
+- Here we can see the average sentiment values of each of the articles. It is no surprise that the secon article has the most since it is about the negative effects of social media. 
+
+```{r warning=FALSE, message= FALSE}
+
+social_media_afinn <- social_media_tidy%>%
+  inner_join(get_sentiments("afinn"), by = "word") %>%
+  group_by(Article_id)%>%
+  summarize(value = sum(value * n() / sum(n())))
+
+social_media_afinn %>%
+  mutate(Article_id = reorder(Article_id, value)) %>%
+  ggplot(aes(Article_id, value, fill = value > 0)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  ylab("Average sentiment value")
+```
+
+## Visualization of the three sentiments AFINN, Bing, and NRC
+
+```{r warning=FALSE, message= FALSE}
+afinn <- social_media_tidy %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = row_number() %/% 60) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(social_media_tidy %>% 
+                            inner_join(get_sentiments("bing")) %>%
+                            mutate(method = "Bing"),
+                          social_media_tidy %>% 
+                            inner_join(get_sentiments("nrc") %>% 
+                                         filter(sentiment %in% c("positive", 
+                                                                 "negative"))) %>%
+                            mutate(method = "NRC")) %>%
+  count(method, index = row_number() %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+
+
+```{r warning=FALSE, message= FALSE}
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+```
+
+
+## WORDCLOUDS
+
+- With wordcloud one can visually see the words themselves
+
+### Positive Bing Wordcloud
+
+```{r warning=FALSE, message= FALSE}
+social_media_tidy  %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray80", "gray20"),
+                   max.words = 50)
+```
+
+## BING Negative Wordcloud
+
+```{r}
+social_media_tidy  %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 50)
+```
+
+## Conclusion
+
+- Although there may be some positive aspects of young adolescents and teens using social media, but I still dont think it outweighs the negative aspects. 
+- The fact that the negatives include depression, anxiety, and suicide it makes me worry even more. 
+- Social media may be bad for adolescents and teens. 
+
+### Complications 
+- Throughout this project there were many complications but with every complication there was a solution to the problem.
+
